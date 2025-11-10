@@ -219,7 +219,9 @@ function renderCalendar() {
         `;
         
         const dateKey = `${year}-${month}-${day}`;
-        if (calendarNotesCache[dateKey]) {
+        const hasNote = calendarNotesCache[dateKey];
+        
+        if (hasNote) {
             dayElement.classList.add('has-note');
         }
         
@@ -229,19 +231,37 @@ function renderCalendar() {
             dayElement.classList.add('today');
         }
         
-        // Verificar si es un día futuro
+        // Verificar si es un día futuro o pasado
         const currentDayDate = new Date(year, month, day);
         const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const isFuture = currentDayDate > todayDate;
+        const isPast = currentDayDate < todayDate;
+        
+        // Verificar si el usuario actual puede acceder a este día
+        const currentUserName = userProfile ? userProfile.name : '';
+        const isCurrentUserTurn = (isJotaTurn && currentUserName === 'Jota') || (!isJotaTurn && currentUserName === 'Nini');
         
         if (isFuture) {
-            // Día futuro - deshabilitar
+            // Día futuro - deshabilitar completamente
             dayElement.classList.add('future-day');
             dayElement.style.cursor = 'not-allowed';
             dayElement.style.opacity = '0.4';
+        } else if (hasNote) {
+            // Tiene nota - TODOS pueden leerla (tanto propias como del otro)
+            dayElement.style.cursor = 'pointer';
+            dayElement.addEventListener('click', () => openNoteModal(year, month, day, turnName, true));
+        } else if (isPast) {
+            // Día pasado SIN nota - bloqueado (ya no se puede escribir)
+            dayElement.style.cursor = 'not-allowed';
+            dayElement.style.opacity = '0.5';
+        } else if (!isCurrentUserTurn) {
+            // Día de hoy pero no es su turno - bloqueado
+            dayElement.style.cursor = 'not-allowed';
+            dayElement.style.opacity = '0.6';
         } else {
-            // Día pasado o actual - permitir clic
-            dayElement.addEventListener('click', () => openNoteModal(year, month, day, turnName));
+            // Día de hoy Y es su turno Y no tiene nota - puede escribir
+            dayElement.style.cursor = 'pointer';
+            dayElement.addEventListener('click', () => openNoteModal(year, month, day, turnName, false));
         }
         
         grid.appendChild(dayElement);
@@ -256,12 +276,33 @@ function renderCalendar() {
     }
 }
 
-function openNoteModal(year, month, day, turnName) {
+function openNoteModal(year, month, day, turnName, isReadOnly) {
     selectedDate = `${year}-${month}-${day}`;
     
     const turnEmoji = turnName === 'Jota' ? '👨' : '👩';
+    const noteTextarea = document.getElementById('noteTextarea');
+    const saveBtn = document.getElementById('saveNote');
+    const deleteBtn = document.getElementById('deleteNote');
+    
     document.getElementById('noteModalTitle').textContent = `Nota del ${day}/${month + 1}/${year} - Turno de ${turnEmoji} ${turnName}`;
-    document.getElementById('noteTextarea').value = calendarNotesCache[selectedDate] || '';
+    noteTextarea.value = calendarNotesCache[selectedDate] || '';
+    
+    if (isReadOnly) {
+        // Modo solo lectura - ya tiene nota guardada
+        noteTextarea.readOnly = true;
+        noteTextarea.style.backgroundColor = '#f5f5f5';
+        noteTextarea.style.cursor = 'not-allowed';
+        saveBtn.style.display = 'none';
+        deleteBtn.style.display = 'none';
+    } else {
+        // Modo edición - puede escribir
+        noteTextarea.readOnly = false;
+        noteTextarea.style.backgroundColor = 'white';
+        noteTextarea.style.cursor = 'text';
+        saveBtn.style.display = 'block';
+        deleteBtn.style.display = 'none'; // Nunca mostrar eliminar
+    }
+    
     document.getElementById('noteModal').classList.add('active');
 }
 
