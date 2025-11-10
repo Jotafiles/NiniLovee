@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💕 Nini Love 💕</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+</head>
+<body>
+    <div class="floating-hearts" id="floatingHearts"></div>
+    
+    <div class="app-container">
+        <div class="app-header">
+            <h1>💕 Nini Love 💕</h1>
+        </div>
+        
+        <div class="main-content">
+            <div id="home" class="section active">
+                <div class="clock-widget">
+                    <div class="clock-time" id="clockTime">00:00:00</div>
+                    <div class="clock-date" id="clockDate">Cargando...</div>
+                </div>
+                
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <button id="prevMonth">←</button>
+                        <h3 id="currentMonth">Mes Año</h3>
+                        <button id="nextMonth">→</button>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                </div>
+            </div>
+            
+            <div id="letters" class="section">
+                <div id="lettersContainer" class="letters-container"></div>
+                <button class="new-letter-btn" id="newLetterBtn">+</button>
+            </div>
+            
+            <div id="memories" class="section">
+                <div id="memoriesContainer" class="memories-grid"></div>
+                <button class="new-letter-btn" id="newMemoryBtn">+</button>
+            </div>
+            
+            <div id="messages" class="section">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages"></div>
+                    <div class="chat-input-container">
+                        <input type="file" id="chatImageInput" accept="image/*" style="display: none;">
+                        <button class="attach-btn" id="attachBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; padding: 10px;">📎</button>
+                        <input type="text" class="chat-input" id="chatInput" placeholder="Escribe un mensaje...">
+                        <button class="send-btn" id="sendBtn">➤</button>
+                    </div>
+                    <div id="chatImagePreview" style="display: none; padding: 10px; text-align: center;">
+                        <img id="chatImagePreviewImg" style="max-width: 200px; max-height: 200px; border-radius: 10px;">
+                        <button id="removeChatImage" style="display: block; margin: 10px auto; padding: 5px 15px; background: #ff4444; color: white; border: none; border-radius: 5px; cursor: pointer;">Quitar imagen</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="profile" class="section">
+                <div class="profile-container">
+                    <div class="profile-header">
+                        <div class="profile-photo" id="profilePhoto">👩‍❤️‍👨</div>
+                        <div class="profile-name" id="profileName">Mi Amor</div>
+                        <div class="profile-country" id="profileCountry">🌍 País</div>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <h3>💕 Recuerdos Recientes</h3>
+                        <div class="profile-memories" id="profileMemories"></div>
+                    </div>
+                    
+                    <button class="btn" id="editProfileBtn">Editar Perfil</button>
+                    <button class="btn btn-secondary" id="logoutBtn" style="margin-top: 15px; width: 100%;">Cerrar Sesión</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-nav">
+            <div class="nav-item active" data-section="home">
+                <div class="icon">🏠</div>
+                <div class="label">Inicio</div>
+            </div>
+            <div class="nav-item" data-section="letters">
+                <div class="icon">💌</div>
+                <div class="label">Cartas</div>
+            </div>
+            <div class="nav-item" data-section="memories">
+                <div class="icon">📷</div>
+                <div class="label">Recuerdos</div>
+            </div>
+            <div class="nav-item" data-section="messages">
+                <div class="icon">💬</div>
+                <div class="label">Mensajes</div>
+            </div>
+            <div class="nav-item" data-section="profile">
+                <div class="icon">👩‍❤️‍👨</div>
+                <div class="label">Perfil</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="noteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="noteModalTitle">Nota del día</h3>
+                <button class="close-modal" id="closeNoteModal">×</button>
+            </div>
+            <textarea id="noteTextarea" placeholder="Escribe una nota romántica para este día..."></textarea>
+            <button class="btn" id="saveNote">Guardar 💕</button>
+            <button class="btn btn-secondary" id="deleteNote">Eliminar</button>
+        </div>
+    </div>
+    
+    <div class="modal" id="letterModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nueva Carta 💌</h3>
+                <button class="close-modal" id="closeLetterModal">×</button>
+            </div>
+            <div class="letter-form">
+                <div class="form-group">
+                    <label>De:</label>
+                    <input type="text" id="letterFrom" placeholder="Tu nombre">
+                </div>
+                <div class="form-group">
+                    <label>Para:</label>
+                    <input type="text" id="letterTo" placeholder="Nombre de tu amor">
+                </div>
+                <div class="form-group">
+                    <label>Mensaje:</label>
+                    <textarea id="letterMessage" placeholder="Escribe tu carta de amor..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Emojis:</label>
+                    <div class="emoji-picker">
+                        <button class="emoji-btn" data-emoji="💕">💕</button>
+                        <button class="emoji-btn" data-emoji="💖">💖</button>
+                        <button class="emoji-btn" data-emoji="💗">💗</button>
+                        <button class="emoji-btn" data-emoji="💓">💓</button>
+                        <button class="emoji-btn" data-emoji="💝">💝</button>
+                        <button class="emoji-btn" data-emoji="🌹">🌹</button>
+                        <button class="emoji-btn" data-emoji="🌸">🌸</button>
+                        <button class="emoji-btn" data-emoji="🦋">🦋</button>
+                    </div>
+                </div>
+                <button class="btn" id="saveLetter">Enviar Carta 💌</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="viewLetterModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>💌 Carta de Amor</h3>
+                <button class="close-modal" id="closeViewLetterModal">×</button>
+            </div>
+            <div id="viewLetterContent"></div>
+            <button class="btn btn-secondary" id="deleteLetterBtn">Eliminar Carta</button>
+        </div>
+    </div>
+    
+    <div class="modal" id="memoryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nuevo Recuerdo 📷</h3>
+                <button class="close-modal" id="closeMemoryModal">×</button>
+            </div>
+            <div class="letter-form">
+                <div class="form-group">
+                    <label>Título:</label>
+                    <input type="text" id="memoryTitle" placeholder="Título del recuerdo">
+                </div>
+                <div class="form-group">
+                    <label>Descripción:</label>
+                    <textarea id="memoryDescription" placeholder="Describe este momento especial..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Foto del recuerdo:</label>
+                    <input type="file" id="memoryPhotoInput" accept="image/*" style="margin-bottom: 10px;">
+                    <div id="memoryPhotoPreview" style="width: 200px; height: 200px; border-radius: 10px; overflow: hidden; margin: 10px auto; display: none;">
+                        <img id="memoryPhotoPreviewImg" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>O elige un emoji:</label>
+                    <div class="emoji-picker">
+                        <button class="emoji-btn" data-emoji="💕">💕</button>
+                        <button class="emoji-btn" data-emoji="📷">📷</button>
+                        <button class="emoji-btn" data-emoji="🌹">🌹</button>
+                        <button class="emoji-btn" data-emoji="🎂">🎂</button>
+                        <button class="emoji-btn" data-emoji="🎉">🎉</button>
+                        <button class="emoji-btn" data-emoji="✈️">✈️</button>
+                        <button class="emoji-btn" data-emoji="🌟">🌟</button>
+                        <button class="emoji-btn" data-emoji="🦋">🦋</button>
+                    </div>
+                </div>
+                <button class="btn" id="saveMemory">Guardar Recuerdo 📷</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="viewMemoryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📷 Recuerdo</h3>
+                <button class="close-modal" id="closeViewMemoryModal">×</button>
+            </div>
+            <div id="viewMemoryContent"></div>
+            <button class="btn btn-secondary" id="deleteMemoryBtn">Eliminar Recuerdo</button>
+        </div>
+    </div>
+    
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Perfil</h3>
+                <button class="close-modal" id="closeProfileModal">×</button>
+            </div>
+            <div class="letter-form">
+                <div class="form-group">
+                    <label>Nombre:</label>
+                    <input type="text" id="editProfileName" placeholder="Tu nombre">
+                </div>
+                <div class="form-group">
+                    <label>País:</label>
+                    <input type="text" id="editProfileCountry" placeholder="Tu país">
+                </div>
+                <div class="form-group">
+                    <label>Foto de perfil:</label>
+                    <input type="file" id="profilePhotoInput" accept="image/*" style="margin-bottom: 10px;">
+                    <div id="profilePhotoPreview" style="width: 100px; height: 100px; border-radius: 50%; overflow: hidden; margin: 10px auto; display: none;">
+                        <img id="profilePhotoPreviewImg" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>O elige un emoji:</label>
+                    <div class="emoji-picker">
+                        <button class="emoji-btn" data-emoji="👨">👨</button>
+                        <button class="emoji-btn" data-emoji="👩">👩</button>
+                        <button class="emoji-btn" data-emoji="💑">💑</button>
+                        <button class="emoji-btn" data-emoji="💏">💏</button>
+                        <button class="emoji-btn" data-emoji="💕">💕</button>
+                        <button class="emoji-btn" data-emoji="💖">💖</button>
+                    </div>
+                </div>
+                <button class="btn" id="saveProfile">Guardar Perfil</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app-supabase.js"></script>
+</body>
+</html>
