@@ -1,6 +1,8 @@
 // ========== VARIABLES GLOBALES ==========
 let currentUser = null;
 let currentUserId = null;
+let userProfile = null;
+let partnerProfile = null;
 let messageSubscription = null;
 let lettersSubscription = null;
 let memoriesSubscription = null;
@@ -651,6 +653,17 @@ async function sendMessageHandler() {
 }
 
 async function loadMessages() {
+    // Asegurarse de que los perfiles estén cargados
+    if (!userProfile) {
+        console.log('⚠️ Perfil de usuario no cargado, cargando...');
+        await loadProfile();
+    }
+    
+    if (!partnerProfile) {
+        console.log('⚠️ Perfil de pareja no cargado, cargando...');
+        await loadPartnerProfile();
+    }
+    
     const result = await getMessages(currentUserId, null);
     const container = document.getElementById('chatMessages');
     
@@ -669,31 +682,62 @@ async function loadMessages() {
     // Obtener nombre del usuario actual
     const currentUserName = userProfile ? userProfile.name : 'Usuario';
     
-    container.innerHTML = result.data.map(msg => `
-        <div class="message ${msg.sender_name === currentUserName ? 'sent' : ''}">
-            <div class="message-bubble">
-                ${msg.image_url ? `<img src="${msg.image_url}" style="max-width: 200px; max-height: 200px; border-radius: 10px; margin-bottom: 5px; display: block;">` : ''}
-                ${msg.text ? `<div>${msg.text}</div>` : ''}
-                <div class="message-time">${new Date(msg.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div>
+    console.log('💬 Renderizando mensajes...');
+    console.log('   - Usuario actual:', currentUserName);
+    console.log('   - Perfil pareja:', partnerProfile ? partnerProfile.name : 'No cargado');
+    
+    container.innerHTML = result.data.map(msg => {
+        const isSent = msg.sender_name === currentUserName;
+        const profile = isSent ? userProfile : partnerProfile;
+        
+        console.log(`   - Mensaje de "${msg.sender_name}": ${isSent ? 'Enviado' : 'Recibido'}`);
+        
+        // Generar HTML de la foto de perfil
+        let profilePhotoHTML = '';
+        if (profile) {
+            if (profile.profile_photo_url) {
+                profilePhotoHTML = `<img src="${profile.profile_photo_url}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            } else {
+                profilePhotoHTML = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 20px;">${profile.profile_emoji || '👤'}</div>`;
+            }
+        } else {
+            // Si no hay perfil, mostrar un emoji por defecto
+            profilePhotoHTML = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 20px;">👤</div>`;
+        }
+        
+        return `
+            <div class="message ${isSent ? 'sent' : ''}">
+                ${!isSent ? `<div class="message-avatar">${profilePhotoHTML}</div>` : ''}
+                <div class="message-bubble">
+                    ${msg.image_url ? `<img src="${msg.image_url}" style="max-width: 200px; max-height: 200px; border-radius: 10px; margin-bottom: 5px; display: block;">` : ''}
+                    ${msg.text ? `<div>${msg.text}</div>` : ''}
+                    <div class="message-time">${new Date(msg.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+                ${isSent ? `<div class="message-avatar">${profilePhotoHTML}</div>` : ''}
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
     
     container.scrollTop = container.scrollHeight;
 }
 
 // ========== PERFIL ==========
 let selectedProfileEmoji = '👩‍❤️‍👨';
-let userProfile = null;
 
 function initProfile() {
     document.getElementById('editProfileBtn').addEventListener('click', async () => {
-        const result = await getUserProfile(currentUserId);
-        if (result.success) {
-            userProfile = result.data;
+        // Cargar el perfil del usuario actual (no de la pareja)
+        if (userProfile) {
             document.getElementById('editProfileName').value = userProfile.name || '';
             document.getElementById('editProfileCountry').value = userProfile.country || '';
             selectedProfileEmoji = userProfile.profile_emoji || '👩‍❤️‍👨';
+            
+            // Mostrar foto de perfil actual si existe
+            if (userProfile.profile_photo_url) {
+                document.getElementById('profilePhotoPreviewImg').src = userProfile.profile_photo_url;
+                document.getElementById('profilePhotoPreview').style.display = 'block';
+            }
+            
             document.getElementById('profileModal').classList.add('active');
         }
     });
@@ -767,22 +811,81 @@ async function saveProfile() {
 
 async function loadProfile() {
     console.log('🔍 Cargando perfil para usuario:', currentUserId);
+    
+    // Verificar que los elementos existen
+    const myProfileNameEl = document.getElementById('myProfileName');
+    const myProfileCountryEl = document.getElementById('myProfileCountry');
+    const myProfilePhotoEl = document.getElementById('myProfilePhoto');
+    
+    if (!myProfileNameEl || !myProfileCountryEl || !myProfilePhotoEl) {
+        console.error('❌ Elementos del perfil no encontrados en el DOM');
+        return;
+    }
+    
     const profileResult = await getUserProfile(currentUserId);
     
     if (profileResult.success) {
         userProfile = profileResult.data;
-        console.log('✅ Perfil cargado:', userProfile);
+        console.log('✅ Perfil del usuario actual cargado:', userProfile);
         
-        // Mostrar nombre real del usuario (Jota o Nini)
-        document.getElementById('profileName').textContent = userProfile.name || 'Usuario';
-        document.getElementById('profileCountry').textContent = userProfile.country ? `🌍 ${userProfile.country}` : '🌍 País';
+        // Mostrar MI PERFIL (usuario actual)
+        myProfileNameEl.textContent = userProfile.name || 'Mi Nombre';
+        myProfileCountryEl.textContent = userProfile.country ? `🌍 ${userProfile.country}` : '🌍 País';
         
-        // Mostrar foto de perfil o emoji
-        const profilePhotoEl = document.getElementById('profilePhoto');
+        // Mostrar mi foto de perfil
         if (userProfile.profile_photo_url) {
-            profilePhotoEl.innerHTML = `<img src="${userProfile.profile_photo_url}" alt="Foto de perfil" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+            myProfilePhotoEl.innerHTML = `<img src="${userProfile.profile_photo_url}" alt="Mi foto" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
         } else {
-            profilePhotoEl.textContent = userProfile.profile_emoji || '👩‍❤️‍👨';
+            myProfilePhotoEl.textContent = userProfile.profile_emoji || '👤';
+        }
+        
+        console.log('✅ Mi perfil mostrado en la UI');
+        
+        // Hacer clickeable mi perfil
+        const myProfileCard = document.getElementById('myProfileCard');
+        if (myProfileCard) {
+            myProfileCard.onclick = () => viewMyProfile();
+        }
+
+        // Cargar perfil de la pareja (el otro usuario)
+        console.log('🔍 Cargando perfil de la pareja...');
+        await loadPartnerProfile();    
+        
+        // Mostrar perfil de la PAREJA en la tarjeta grande también
+        if (partnerProfile) {
+            console.log('✅ Perfil de pareja encontrado:', partnerProfile);
+            
+            const partnerTitleEl = document.getElementById('partnerProfileTitle');
+            const profileNameEl = document.getElementById('profileName');
+            const profileCountryEl = document.getElementById('profileCountry');
+            const profilePhotoEl = document.getElementById('profilePhoto');
+            
+            if (!partnerTitleEl || !profileNameEl || !profileCountryEl || !profilePhotoEl) {
+                console.error('❌ Elementos del perfil de pareja no encontrados en el DOM');
+                return;
+            }
+            
+            // Actualizar título con el nombre de la pareja
+            partnerTitleEl.textContent = `💑 Perfil de ${partnerProfile.name || 'Mi Amor'}`;
+            profileNameEl.textContent = partnerProfile.name || 'Mi Amor';
+            profileCountryEl.textContent = partnerProfile.country ? `🌍 ${partnerProfile.country}` : '🌍 País';
+
+            // Mostrar foto de perfil de la pareja
+            if (partnerProfile.profile_photo_url) {
+                profilePhotoEl.innerHTML = `<img src="${partnerProfile.profile_photo_url}" alt="Foto de perfil" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+            } else {
+                profilePhotoEl.textContent = partnerProfile.profile_emoji || '👩‍❤️‍👨';
+            }
+            
+            console.log('✅ Perfil de pareja mostrado en la UI');
+            
+            // Hacer clickeable el perfil de la pareja
+            const partnerProfileCard = document.getElementById('partnerProfileCard');
+            if (partnerProfileCard) {
+                partnerProfileCard.onclick = () => viewPartnerProfile();
+            }
+        } else {
+            console.warn('⚠️ No se encontró perfil de pareja. Asegúrate de que ambos usuarios estén registrados con couple_id="pareja1"');
         }
     } else {
         console.error('❌ Error cargando perfil:', profileResult.error);
@@ -809,6 +912,123 @@ async function loadProfile() {
             </div>
         `).join('');
     }
+}
+
+// Cargar perfil de la pareja (el otro usuario)
+async function loadPartnerProfile() {
+    try {
+        console.log('🔍 Buscando perfil de pareja para usuario:', currentUserId);
+        console.log('   - Buscando en tabla: users');
+        
+        // Buscar TODOS los usuarios primero para debug
+        const { data: allUsers, error: allError } = await supabase
+            .from('users')
+            .select('*');
+        
+        console.log('📊 Total de usuarios en la tabla:', allUsers ? allUsers.length : 0);
+        if (allUsers && allUsers.length > 0) {
+            allUsers.forEach((u, i) => {
+                console.log(`   Usuario ${i + 1}:`, {
+                    id: u.id,
+                    name: u.name,
+                    email: u.email,
+                    couple_id: u.couple_id
+                });
+            });
+        }
+        
+        // Buscar cualquier otro usuario que NO sea el actual
+        console.log('🔍 Buscando pareja (cualquier usuario diferente a:', currentUserId, ')');
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .neq('id', currentUserId);
+        
+        console.log('📋 Resultados de búsqueda:', data ? data.length : 0, 'usuario(s)');
+        
+        if (error) {
+            console.error('❌ Error en la consulta:', error);
+            throw error;
+        }
+        
+        if (data && data.length > 0) {
+            partnerProfile = data[0];
+            console.log('✅ Perfil de pareja encontrado:');
+            console.log('   - Nombre:', partnerProfile.name);
+            console.log('   - Email:', partnerProfile.email);
+            console.log('   - ID:', partnerProfile.id);
+            console.log('   - Couple ID:', partnerProfile.couple_id);
+        } else {
+            console.log('⚠️ No se encontró ningún otro usuario en la base de datos');
+            console.log('   Esto significa que solo hay 1 usuario registrado');
+            partnerProfile = null;
+        }
+    } catch (error) {
+        console.error('❌ Error cargando perfil de pareja:', error);
+        partnerProfile = null;
+    }
+}
+
+// Ver perfil completo del usuario actual
+function viewMyProfile() {
+    if (!userProfile) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>👤 Mi Perfil Completo</h3>
+                <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
+            </div>
+            <div style="text-align: center; padding: 20px;">
+                <div style="width: 150px; height: 150px; border-radius: 50%; margin: 0 auto 20px; overflow: hidden; border: 5px solid var(--pink-primary); box-shadow: 0 4px 15px var(--shadow);">
+                    ${userProfile.profile_photo_url 
+                        ? `<img src="${userProfile.profile_photo_url}" style="width: 100%; height: 100%; object-fit: cover;">` 
+                        : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--pink-light) 0%, var(--pink-primary) 100%); font-size: 80px;">${userProfile.profile_emoji || '👤'}</div>`
+                    }
+                </div>
+                <h2 style="color: var(--pink-dark); margin-bottom: 10px;">${userProfile.name}</h2>
+                <p style="color: var(--text-dark); font-size: 18px; margin-bottom: 10px;">${userProfile.country ? `🌍 ${userProfile.country}` : ''}</p>
+                <p style="color: var(--text-dark); opacity: 0.8; font-size: 14px;">${userProfile.email}</p>
+                <div style="margin-top: 20px;">
+                    <button class="btn" onclick="this.closest('.modal').remove(); document.getElementById('editProfileBtn').click();">✏️ Editar Perfil</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Ver perfil completo de la pareja
+function viewPartnerProfile() {
+    if (!partnerProfile) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>💑 Perfil de ${partnerProfile.name}</h3>
+                <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
+            </div>
+            <div style="text-align: center; padding: 20px;">
+                <div style="width: 150px; height: 150px; border-radius: 50%; margin: 0 auto 20px; overflow: hidden; border: 5px solid var(--pink-primary); box-shadow: 0 4px 15px var(--shadow);">
+                    ${partnerProfile.profile_photo_url 
+                        ? `<img src="${partnerProfile.profile_photo_url}" style="width: 100%; height: 100%; object-fit: cover;">` 
+                        : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--pink-light) 0%, var(--pink-primary) 100%); font-size: 80px;">${partnerProfile.profile_emoji || '👩‍❤️‍👨'}</div>`
+                    }
+                </div>
+                <h2 style="color: var(--pink-dark); margin-bottom: 10px;">${partnerProfile.name}</h2>
+                <p style="color: var(--text-dark); font-size: 18px; margin-bottom: 10px;">${partnerProfile.country ? `🌍 ${partnerProfile.country}` : ''}</p>
+                <p style="color: var(--text-dark); opacity: 0.8; font-size: 14px;">${partnerProfile.email}</p>
+                <div style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, var(--pink-light) 0%, var(--pink-primary) 100%); border-radius: 10px;">
+                    <p style="color: white; font-size: 16px; margin: 0;">💕 Tu pareja especial 💕</p>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
 // ========== CARGAR DATOS ==========
